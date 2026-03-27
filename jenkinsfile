@@ -25,6 +25,7 @@ pipeline {
                 checkout scm
                 echo "Code checkout complete"
                 echo "checking"
+                echo "checking again"
             }
         }
 
