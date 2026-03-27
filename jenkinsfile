@@ -24,6 +24,7 @@ pipeline {
                 // Jenkins automatically checks out the branch that triggered the build
                 checkout scm
                 echo "Code checkout complete"
+                echo "checking"
             }
         }
 
