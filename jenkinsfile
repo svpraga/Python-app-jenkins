@@ -50,7 +50,8 @@
                 script {
                     sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
                     sh "docker rmi ${IMAGE_NAME}:latest || true"
-                    echo "Cleanup done"
+                    sh "docker logout || true"   // ← moved here, inside a stage
+                    echo "Cleanup and logout done"
                 }
             }
         }
@@ -62,11 +63,6 @@
         }
         failure {
             echo "BUILD FAILED - Check the red stage above for details"
-        }
-        always {
-            node {
-                sh "docker logout || true"
-            }
         }
     }
 }
