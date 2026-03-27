@@ -1,107 +1,72 @@
-pipeline {
-    // Run on any available Jenkins agent/node
+ pipeline {
     agent any
 
     environment {
-        // These credentials are stored in Jenkins → Manage Jenkins → Credentials
-        // 'dockerhub-creds' is the ID you give when saving credentials in Jenkins
-        DOCKERHUB_CREDENTIALS = credentials('2ea9f21c-6138-40ac-b0cc-1c444e5eea1e')
-        
-        // Your DockerHub username/imagename
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         IMAGE_NAME = "svpraga/flask-devops-app"
-        
-        // BUILD_NUMBER is auto-provided by Jenkins (1, 2, 3... increments each build)
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
 
-        // ─────────────────────────────────────────
-        // STAGE 1: Pull latest code from GitHub
-        // ─────────────────────────────────────────
         stage('Checkout Code') {
             steps {
-                // Jenkins automatically checks out the branch that triggered the build
                 checkout scm
                 echo "Code checkout complete"
-                echo "checking"
-                echo "checking again"
             }
         }
 
-        // ─────────────────────────────────────────
-        // STAGE 2: Build Docker image
-        // ─────────────────────────────────────────
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Reads your Dockerfile and builds the image
-                    // -t means "tag it with this name"
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                     sh "docker build -t ${IMAGE_NAME}:latest ."
-                    echo "Docker image built successfully: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "Docker image built: ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // STAGE 3: Login to DockerHub
-        // ─────────────────────────────────────────
         stage('Login to DockerHub') {
             steps {
                 script {
-                    // DOCKERHUB_CREDENTIALS_USR = your username
-                    // DOCKERHUB_CREDENTIALS_PSW = your password
-                    // These are automatically split from the credentials() binding
                     sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
-                    echo "Logged in to DockerHub successfully"
+                    echo "Logged in to DockerHub"
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // STAGE 4: Push image to DockerHub
-        // ─────────────────────────────────────────
         stage('Push to DockerHub') {
             steps {
                 script {
-                    // Pushes both the versioned tag and latest tag
                     sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                     sh "docker push ${IMAGE_NAME}:latest"
-                    echo "Image pushed to DockerHub: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "Image pushed: ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // STAGE 5: Clean up local images
-        // ─────────────────────────────────────────
         stage('Cleanup') {
             steps {
                 script {
-                    // Remove local images to free disk space on Jenkins server
-                    // '|| true' means: don't fail the build if image not found
                     sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
                     sh "docker rmi ${IMAGE_NAME}:latest || true"
-                    echo "Local images cleaned up"
+                    echo "Cleanup done"
                 }
             }
         }
     }
 
-    // ─────────────────────────────────────────
-    // POST: Runs after ALL stages finish
-    // ─────────────────────────────────────────
     post {
         success {
-            echo "BUILD SUCCESS - Image ${IMAGE_NAME}:${IMAGE_TAG} is now on DockerHub"
+            echo "BUILD SUCCESS - ${IMAGE_NAME}:${IMAGE_TAG} pushed to DockerHub"
         }
         failure {
             echo "BUILD FAILED - Check the red stage above for details"
         }
         always {
-            // Always logout from Docker for security, even if build failed
-            sh "docker logout || true"
+            node {
+                sh "docker logout || true"
+            }
         }
     }
 }
